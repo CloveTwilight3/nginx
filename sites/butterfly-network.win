@@ -1,0 +1,122 @@
+# Redirect root HTTP → www HTTPS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name butterfly-network.win www.butterfly-network.win;
+
+    return 301 https://www.butterfly-network.win$request_uri;
+}
+
+# Redirect root HTTPS → www
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name butterfly-network.win;
+
+    ssl_certificate     /etc/letsencrypt/live/www.butterfly-network.win/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/www.butterfly-network.win/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    return 301 https://www.butterfly-network.win$request_uri;
+}
+
+# 🌐 WWW Site (PK site)
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name www.butterfly-network.win;
+
+    ssl_certificate     /etc/letsencrypt/live/www.butterfly-network.win/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/www.butterfly-network.win/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    include /etc/nginx/snippets/error_pages.conf;
+    include /etc/nginx/snippets/csp-pk.conf;
+    include /etc/nginx/snippets/general-headers.conf;
+
+    location / {
+        proxy_pass http://127.0.0.1:8004;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+
+# 💬 Discord App (Basic site)
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name discord.butterfly-network.win;
+
+    ssl_certificate     /etc/letsencrypt/live/discord.butterfly-network.win/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/discord.butterfly-network.win/privkey.pem;
+
+    include /etc/nginx/snippets/error_pages.conf;
+    include /etc/nginx/snippets/general-headers.conf;
+#    include /etc/nginx/snippets/csp-basic.conf;
+
+    location / {
+        proxy_pass http://127.0.0.1:8002;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+
+# HTTP → HTTPS redirect for discord
+server {
+    listen 80;
+    listen [::]:80;
+    server_name discord.butterfly-network.win;
+
+    return 301 https://discord.butterfly-network.win$request_uri;
+}
+
+# 📊 Status App (Basic site)
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name status.butterfly-network.win;
+
+    ssl_certificate     /etc/letsencrypt/live/status.butterfly-network.win/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/status.butterfly-network.win/privkey.pem;
+
+    include /etc/nginx/snippets/error_pages.conf;
+    include /etc/nginx/snippets/general-headers.conf;
+    include /etc/nginx/snippets/csp-basic.conf;
+
+    # Frontend React app
+    location / {
+        proxy_pass http://127.0.0.1:8011;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Backend API (proxied under /api/)
+    location /api/ {
+        proxy_pass http://127.0.0.1:8010/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+
+# HTTP → HTTPS redirect for status
+server {
+    listen 80;
+    listen [::]:80;
+    server_name status.butterfly-network.win;
+
+    return 301 https://status.butterfly-network.win$request_uri;
+}
