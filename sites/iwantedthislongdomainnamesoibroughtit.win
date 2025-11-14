@@ -1,0 +1,61 @@
+# HTTP redirect for both root and www
+server {
+    if ($host = www.iwantedthislongdomainnamesoibroughtit.win) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+    listen 80;
+    listen [::]:80;
+    server_name iwantedthislongdomainnamesoibroughtit.win.win www.iwantedthislongdomainnamesoibroughtit.win;
+
+    return 301 https://www.iwantedthislongdomainnamesoibroughtit.win$request_uri;
+
+
+}
+
+# HTTPS redirect for root to www
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name iwantedthislongdomainnamesoibroughtit.win;
+
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    return 301 https://www.iwantedthislongdomainnamesoibroughtit.win$request_uri;
+
+    ssl_certificate /etc/letsencrypt/live/iwantedthislongdomainnamesoibroughtit.win/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/iwantedthislongdomainnamesoibroughtit.win/privkey.pem; # managed by Certbot
+}
+
+# Main site on www (HTTPS)
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name www.iwantedthislongdomainnamesoibroughtit.win;
+
+    root /home/clove/butterfly-network-websites/iwantedthislongdomainnamesoibroughtit.win;
+    index index.html;
+
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    include /etc/nginx/snippets/error_pages.conf;
+
+    # 🔐 Security Headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header Content-Security-Policy "default-src 'self'; style-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none';" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+    add_header ETag "";
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    ssl_certificate /etc/letsencrypt/live/iwantedthislongdomainnamesoibroughtit.win/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/iwantedthislongdomainnamesoibroughtit.win/privkey.pem; # managed by Certbot
+}
