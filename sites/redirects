@@ -1,0 +1,26 @@
+# Redirect gaming.clovetwilight3.co.uk → www.mazeymoos.com
+server {
+    listen 80;
+    listen [::]:80;
+    server_name gaming.clovetwilight3.co.uk;
+
+    return 301 $scheme://www.mazeymoos.com$request_uri;
+}
+
+# Redirect socials.clovetwilight3.co.uk → www.lgbwitht.win
+server {
+    listen 80;
+    listen [::]:80;
+    server_name socials.clovetwilight3.co.uk;
+
+    return 301 $scheme://www.lgbwitht.win$request_uri;
+}
+
+# Redirect portfolio.clovetwilight3.co.uk   ^f^r www.clove-portfoio.win
+server {
+    listen 80;
+    listen [::]:80;
+    server_name portfolio.clovetwilight3.co.uk;
+
+    return 301 $scheme://www.clove-portfolio.co.uk;
+}
