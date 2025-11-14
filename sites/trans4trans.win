@@ -1,0 +1,80 @@
+# Redirect root → www (HTTP)
+server {
+    listen 80;
+    listen [::]:80;
+    server_name trans4trans.win;
+
+    return 301 https://www.trans4trans.win$request_uri;
+}
+
+# Redirect root → www (HTTPS)
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name trans4trans.win;
+
+    ssl_certificate /etc/letsencrypt/live/trans4trans.win/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/trans4trans.win/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;   # managed by Certbot
+
+    return 301 https://www.trans4trans.win$request_uri;
+}
+
+# Main site on www (HTTP → HTTPS)
+server {
+    listen 80;
+    listen [::]:80;
+    server_name www.trans4trans.win;
+
+    return 301 https://www.trans4trans.win$request_uri;
+}
+
+# Main site on www (HTTPS actual content + proxies)
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name www.trans4trans.win;
+
+    root /home/clove/butterfly-network-websites/trans4trans.win/frontend;
+    index index.html;
+
+    include snippets/error_pages.conf;
+    
+    # 🔐 Security Headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; frame-ancestors 'none';" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+    add_header ETag "";
+
+
+    location / {
+        try_files $uri /index.html;
+    }
+
+    # API proxy
+    location /api/ {
+        proxy_pass http://127.0.0.1:8003;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # WebSocket proxy
+    location /ws/ {
+        proxy_pass http://127.0.0.1:8003;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+    }
+
+    ssl_certificate /etc/letsencrypt/live/trans4trans.win/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/trans4trans.win/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;   # managed by Certbot
+}
