@@ -1,0 +1,61 @@
+# Redirect root → www (HTTP)
+server {
+    listen 80;
+    listen [::]:80;
+    server_name mazeymoos.com;
+
+    return 301 https://www.mazeymoos.com$request_uri;
+}
+
+# Redirect root → www (HTTPS)
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name mazeymoos.com;
+
+    ssl_certificate /etc/letsencrypt/live/www.mazeymoos.com/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/www.mazeymoos.com/privkey.pem; # managed by Certbot
+
+    return 301 https://www.mazeymoos.com$request_uri;
+}
+
+# Main site on www (HTTP → HTTPS)
+server {
+    listen 80;
+    listen [::]:80;
+    server_name www.mazeymoos.com;
+
+    return 301 https://www.mazeymoos.com$request_uri;
+}
+
+# Main site on www (HTTPS content)
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name www.mazeymoos.com;
+
+    include snippets/error_pages.conf;
+
+    # 🔐 Security Headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; frame-ancestors 'none';" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+    add_header ETag "";
+
+    location / {
+        proxy_pass http://localhost:8006;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    ssl_certificate /etc/letsencrypt/live/www.mazeymoos.com/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/www.mazeymoos.com/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;   # managed by Certbot
+}
