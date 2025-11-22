@@ -31,6 +31,13 @@ server {
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
+    # OCSP Stapling
+    ssl_stapling on;
+    ssl_stapling_verify on;
+    ssl_trusted_certificate /etc/letsencrypt/live/doughmination.win/chain.pem;
+    resolver 1.1.1.1 1.0.0.1 valid=300s;
+    resolver_timeout 5s;
+
     # Cloudflare real IP restoration
     real_ip_header CF-Connecting-IP;
     set_real_ip_from 103.21.244.0/22;
@@ -52,6 +59,14 @@ server {
     include /etc/nginx/snippets/general-headers.conf;
     include /etc/nginx/snippets/csp-pk.conf;
     include /etc/nginx/snippets/error_pages.conf;
+
+    # Nginx status (localhost only)
+    location /nginx_status {
+        stub_status on;
+        access_log off;
+        allow 127.0.0.1;
+        deny all;
+    }
 
     # Login endpoint with strict rate limiting
     location /api/login {
@@ -115,6 +130,8 @@ server {
 
     # Serve /avatars/ static content via backend
     location /avatars/ {
+        client_max_body_size 5M;
+        
         proxy_pass http://localhost:8000/avatars/;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
