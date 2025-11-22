@@ -53,10 +53,6 @@ server {
     include /etc/nginx/snippets/csp-pk.conf;
     include /etc/nginx/snippets/error_pages.conf;
 
-    # Rate limiting zones
-    limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
-    limit_req_zone $binary_remote_addr zone=login_limit:10m rate=5r/m;
-
     # Login endpoint with strict rate limiting
     location /api/login {
         limit_req zone=login_limit burst=3 nodelay;
