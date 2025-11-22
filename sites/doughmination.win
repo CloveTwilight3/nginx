@@ -1,3 +1,7 @@
+# Rate limiting zones (add to http block if not already present)
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
+limit_req_zone $binary_remote_addr zone=login_limit:10m rate=5r/m;
+
 # Redirect HTTP root and www → HTTPS www
 server {
     listen 80;
@@ -53,8 +57,23 @@ server {
     include /etc/nginx/snippets/csp-pk.conf;
     include /etc/nginx/snippets/error_pages.conf;
 
-    # /api/ with prefix preserved
+    # Login endpoint with strict rate limiting
+    location /api/login {
+        limit_req zone=login_limit burst=3 nodelay;
+        
+        proxy_pass http://localhost:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+    }
+
+    # /api/ with rate limiting
     location /api/ {
+        limit_req zone=api_limit burst=20 nodelay;
+        
         proxy_pass http://localhost:8000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
@@ -65,7 +84,7 @@ server {
         proxy_read_timeout 86400;
     }
 
-    # WebSocket handler
+    # WebSocket handler with optimized settings
     location /ws {
         proxy_pass http://localhost:8000;
         proxy_http_version 1.1;
@@ -78,10 +97,17 @@ server {
         proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
         proxy_read_timeout 86400;
         proxy_send_timeout 86400;
+        proxy_connect_timeout 60;
+        
+        # WebSocket specific
+        proxy_buffering off;
+        proxy_cache off;
     }
 
     # Shortened API routes (rewritten to /api/…)
     location ~ ^/(members|fronters|system|subsystems|cofronts|is_admin|users|metrics) {
+        limit_req zone=api_limit burst=20 nodelay;
+        
         proxy_pass http://localhost:8000/api$request_uri;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
@@ -100,6 +126,7 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+        add_header Cache-Control "public, max-age=3600";
     }
 
     # Serve fonts with CORS for allowed domains
@@ -131,7 +158,7 @@ server {
         add_header Pragma "no-cache" always;
     }
 
-    # Catch-all with crawler detection
+    # Catch-all with improved bot detection
     location / {
         # Detect bots/crawlers
         set $is_bot 0;
@@ -142,20 +169,26 @@ server {
         # Route crawlers to backend for meta tag injection
         if ($is_bot = 1) {
             proxy_pass http://localhost:8000;
-            break;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
         }
 
         # Regular browsers get the frontend SPA
-        proxy_pass http://localhost:8001/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
-        proxy_cache_bypass $http_upgrade;
-        proxy_read_timeout 86400;
+        if ($is_bot = 0) {
+            proxy_pass http://localhost:8001/;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+            proxy_cache_bypass $http_upgrade;
+            proxy_read_timeout 86400;
+        }
     }
 }
