@@ -3,28 +3,28 @@ server {
     listen 80;
     listen [::]:80;
     server_name doughmination.win www.doughmination.win;
-    return 301 https://www.doughmination.win$request_uri;
+    return 301 https://doughmination.win$request_uri;
 }
 
 # Redirect HTTPS root → HTTPS www
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    server_name doughmination.win;
+    server_name www.doughmination.win;
 
     ssl_certificate /etc/letsencrypt/live/doughmination.win/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/doughmination.win/privkey.pem;
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
-    return 301 https://www.doughmination.win$request_uri;
+    return 301 https://doughmination.win$request_uri;
 }
 
 # Main site (HTTPS on www)
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    server_name www.doughmination.win;
+    server_name doughmination.win;
 
     ssl_certificate /etc/letsencrypt/live/doughmination.win/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/doughmination.win/privkey.pem;
